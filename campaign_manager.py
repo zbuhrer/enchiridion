@@ -1,13 +1,12 @@
-import openai
-
 class CampaignManager:
     # ... (existing code) ...
 
-    def process_edit_request(self, request):
-        # Load the current content of the file
-        current_content = self.files[file_path]
+    def process_edit_request(self):
+        file_path = 'path/to/your/file'  # replace with the actual path
+        current_content = self.files[file_path]  # assuming self.files is a dictionary
 
         # Prepare the prompt for the AI
+        request = "Edit request: example"  # replace with the actual edit request
         prompt = f"""
 {self.prompts.main_system}
 {self.prompts.lazy_prompt}
