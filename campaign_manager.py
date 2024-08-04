@@ -10,21 +10,21 @@ def process_edit_request(self):
     # Prepare the prompt for the AI
     request = "Edit request: example"  # replace with the actual edit request
     prompt = f"""
-{self.prompts.main_system}
-{self.prompts.lazy_prompt}
+        {self.prompts.main_system}
+        {self.prompts.lazy_prompt}
 
-Current content of {file_path}:
-{current_content}
+        Current content of {file_path}:
+        {current_content}
 
-Edit request: {request}
+        Edit request: {request}
 
-Please provide the updated content for {file_path}, incorporating the requested changes.
-Ensure that the changes are seamlessly integrated and the overall document remains coherent.
-If any clarification is needed, ask questions before making changes.
-"""
+        Please provide the updated content for {file_path}, incorporating the requested changes.
+        Ensure that the changes are seamlessly integrated and the overall document remains coherent.
+        If any clarification is needed, ask questions before making changes.
+        """
 
     # Call the OpenAI API
-    response = openai.ChatCompletion.create(
+    response = openai.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[
             {"role": "system", "content": prompt},
@@ -35,10 +35,10 @@ If any clarification is needed, ask questions before making changes.
     )
 
     # Extract the AI's response
-    ai_response = response.choices[0].message['content']
+    ai_response = response.choices[0].message.content
 
     # Check if the AI is asking for clarification
-    if "?" in ai_response:
+    if "?" in str(ai_response):
         # If there's a question, return it to the user
         return {"type": "clarification", "content": ai_response}
     else:
