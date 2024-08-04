@@ -7,7 +7,7 @@ from pygments.lexers import MarkdownLexer
 from prompt_toolkit.styles import Style
 
 # Importing necessary components from io.py
-from io import InputOutput, AutoCompleter
+from input_controller import InputOutput, AutoCompleter
 
 class CampaignPrompts:
     main_system = """Act as an expert Dungeon Master and campaign manager.
