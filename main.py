@@ -2,12 +2,10 @@
 import curses
 import sys
 import logging
-from pathlib import Path
-from typing import Optional
 
+from typing import Optional
 from game import Game
 from renderer import Renderer
-from config import Config
 
 # Configure logging
 logging.basicConfig(
