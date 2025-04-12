@@ -2,9 +2,9 @@
 import uuid
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
 import yaml
-import openai
+from openai import OpenAI
 from datetime import datetime
 
 from config import Config
@@ -16,7 +16,7 @@ class Toolbox:
 
     def __init__(self):
         """Initialize the toolbox with required settings."""
-        openai.api_key = Config.MODEL_CONFIG.get("api_key")
+        self.client = OpenAI(api_key=Config.MODEL_CONFIG.get("api_key"))
         self.model_config = Config.get_model_config()
 
     def write_markdown(self, file_path: Path, content: str) -> None:
@@ -73,7 +73,7 @@ class Toolbox:
             if Config.is_test_environment():
                 return self._mock_llm_response(prompt)
 
-            response = openai.ChatCompletion.create(
+            response = self.client.chat.completions.create(
                 messages=[{"role": "user", "content": prompt}],
                 **config
             )
