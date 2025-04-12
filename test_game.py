@@ -11,7 +11,7 @@ from state import StateManager
 from toolbox import Toolbox
 from agents import StoryAgent, LinkAgent, LoreAgent
 from renderer import Renderer
-from queue import TaskQueue, TaskStatus
+from task_queue import TaskQueue, TaskStatus
 
 # Test fixtures
 @pytest.fixture
@@ -151,7 +151,18 @@ def test_task_queue():
     # Test async execution
     import asyncio
     asyncio.run(queue.run_all())
-    assert queue.get_result(result.task_id).status == TaskStatus.COMPLETED
+
+    # Add retries to wait for result
+    max_retries = 5
+    task_result = None
+    for _ in range(max_retries):
+        task_result = queue.get_result(result.task_id)
+        if task_result is not None:
+            break
+        asyncio.run(asyncio.sleep(0.1))
+
+    assert task_result is not None
+    assert task_result.status == TaskStatus.COMPLETED
 
 # Game Integration Tests
 def test_game_initialization(game, temp_dir):

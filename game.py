@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import uuid
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Optional
 import logging
 
 from agents import StoryAgent, LinkAgent, LoreAgent
