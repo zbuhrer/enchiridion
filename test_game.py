@@ -1,21 +1,17 @@
 #!/usr/bin/env python3
 import pytest
-import curses
 from pathlib import Path
-import yaml
 import shutil
 import tempfile
 from unittest.mock import Mock, patch, MagicMock
 
-from main import setup_curses, cleanup_curses
-from game import Game
+from main import Game
 from config import Config
 from state import StateManager
 from toolbox import Toolbox
 from agents import StoryAgent, LinkAgent, LoreAgent
 from renderer import Renderer
 from queue import TaskQueue, TaskStatus
-from prompts import PromptManager
 
 # Test fixtures
 @pytest.fixture
