@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 import curses
 import textwrap
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 import logging
-from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
