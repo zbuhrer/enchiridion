@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import os
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 class Config:
     """Configuration settings for the Enchiridion game."""
@@ -60,7 +60,7 @@ class Config:
         return cls.SAVES_DIR / save_uuid / cls.LINKS_FILE
 
     @classmethod
-    def get_model_config(cls, override: Dict[str, Any] = None) -> Dict[str, Any]:
+    def get_model_config(cls, override: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Get model configuration with optional overrides."""
         config = cls.MODEL_CONFIG.copy()
         if override:
