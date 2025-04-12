@@ -1,0 +1,95 @@
+#!/usr/bin/env python3
+import uuid
+import logging
+from pathlib import Path
+from typing import Dict, List, Optional
+import yaml
+import openai
+
+from config import Config
+
+logger = logging.getLogger(__name__)
+
+class Toolbox:
+    """Collection of utility functions and tools for Agents."""
+
+    def __init__(self):
+        """Initialize the toolbox with required settings."""
+        openai.api_key = Config.MODEL_CONFIG.get("api_key")
+        self.model_config = Config.get_model_config()
+
+    def write_markdown(self, file_path: Path, content: str) -> None:
+        """Write content to a markdown file."""
+        try:
+            with open(file_path, 'w') as f:
+                f.write(content)
+            logger.debug(f"Wrote content to {file_path}")
+        except Exception as e:
+            logger.error(f"Error writing to {file_path}: {str(e)}")
+            raise
+
+    def append_chapter(self, text: str) -> str:
+        """Create a new chapter file and append text to it."""
+        save_path = Path(Config.SAVES_DIR)
+        chapters = sorted(save_path.glob(f"{Config.CHAPTER_PREFIX}*.md"))
+        next_num = len(chapters) + 1
+
+        chapter_path = save_path / f"{Config.CHAPTER_PREFIX}{next_num}{Config.CHAPTER_EXT}"
+        self.write_markdown(chapter_path, text)
+        return str(chapter_path)
+
+    def update_links_index(self, from_file: Path, links: List[Dict]) -> None:
+        """Update the links index with new relationships."""
+        links_file = Config.get_links_path(from_file.parent.name)
+        try:
+            if links_file.exists():
+                with open(links_file) as f:
+                    existing_links = yaml.safe_load(f) or {}
+            else:
+                existing_links = {}
+
+            existing_links[str(from_file)] = links
+
+            with open(links_file, 'w') as f:
+                yaml.safe_dump(existing_links, f)
+
+            logger.debug(f"Updated links index for {from_file}")
+        except Exception as e:
+            logger.error(f"Error updating links index: {str(e)}")
+            raise
+
+    def generate_uuid(self) -> str:
+        """Generate a unique identifier."""
+        return str(uuid.uuid4())
+
+    def invoke_llm(self, prompt: str, **kwargs) -> str:
+        """Send a prompt to the LLM and return the response."""
+        try:
+            # Merge default config with any overrides
+            config = self.model_config.copy()
+            config.update(kwargs)
+
+            if Config.is_test_environment():
+                return self._mock_llm_response(prompt)
+
+            response = openai.ChatCompletion.create(
+                messages=[{"role": "user", "content": prompt}],
+                **config
+            )
+
+            return response.choices[0].message.content
+        except Exception as e:
+            logger.error(f"Error invoking LLM: {str(e)}")
+            raise
+
+    def _mock_llm_response(self, prompt: str) -> str:
+        """Return mock responses for testing."""
+        return f"Mock response for prompt: {prompt[:50]}..."
+
+if __name__ == "__main__":
+    # Simple test of toolbox functionality
+    toolbox = Toolbox()
+    test_path = Path("test.md")
+    toolbox.write_markdown(test_path, "# Test Content")
+    print(f"Test file created: {test_path.exists()}")
+    test_path.unlink()  # Cleanup
