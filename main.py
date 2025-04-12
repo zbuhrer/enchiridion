@@ -2,10 +2,11 @@
 import curses
 import sys
 import logging
-
 from typing import Optional
+
 from game import Game
 from renderer import Renderer
+
 
 # Configure logging
 logging.basicConfig(

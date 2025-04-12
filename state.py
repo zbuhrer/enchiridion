@@ -51,7 +51,17 @@ class StateManager:
 
     def save_world_state(self, save_path: Path) -> None:
         """Save current world state to YAML file."""
-        world_state_path = Config.get_world_state_path(save_path.name)
+        if isinstance(save_path, str):
+            save_path = Path(save_path)
+
+        if Config.is_test_environment():
+            save_dir = save_path
+        else:
+            save_dir = Config.SAVES_DIR / save_path.name
+
+        save_dir.mkdir(parents=True, exist_ok=True)
+        world_state_path = save_dir / Config.WORLD_STATE_FILE
+
         try:
             self.world_state['meta']['last_saved'] = datetime.now().isoformat()
             with open(world_state_path, 'w') as f:

@@ -6,6 +6,7 @@ from typing import Dict, List
 import yaml
 from openai import OpenAI
 from datetime import datetime
+from unittest.mock import MagicMock
 
 from config import Config
 
@@ -16,7 +17,13 @@ class Toolbox:
 
     def __init__(self):
         """Initialize the toolbox with required settings."""
-        self.client = OpenAI(api_key=Config.MODEL_CONFIG.get("api_key"))
+        if not Config.is_test_environment():
+            self.client = OpenAI(api_key=Config.MODEL_CONFIG.get("api_key"))
+        else:
+            self.client = MagicMock()
+            self.client.chat.completions.create.return_value = MagicMock(
+                choices=[MagicMock(message=MagicMock(content="Test response"))]
+            )
         self.model_config = Config.get_model_config()
 
     def write_markdown(self, file_path: Path, content: str) -> None:

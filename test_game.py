@@ -15,18 +15,49 @@ from task_queue import TaskQueue, TaskStatus
 
 # Test fixtures
 @pytest.fixture
-def temp_dir():
-    """Create a temporary directory for test files."""
-    temp_path = Path(tempfile.mkdtemp())
-    yield temp_path
-    shutil.rmtree(temp_path)
+def mock_curses():
+    """Mock curses functionality globally."""
+    curses_mock = MagicMock()
+    curses_mock.LINES = 24
+    curses_mock.COLS = 80
+    curses_mock.COLOR_GREEN = 2
+    curses_mock.COLOR_BLACK = 0
+    curses_mock.COLOR_YELLOW = 3
+    curses_mock.COLOR_CYAN = 6
+    curses_mock.A_NORMAL = 0
+
+    window_mock = MagicMock()
+    window_mock.getmaxyx.return_value = (24, 80)
+    window_mock.getch.return_value = ord('q')
+
+    curses_mock.initscr.return_value = window_mock
+    curses_mock.newwin.return_value = window_mock
+    curses_mock.color_pair.return_value = 0
+
+    with patch.dict('sys.modules', {'curses': curses_mock}):
+        yield curses_mock
 
 @pytest.fixture
-def mock_screen():
-    """Mock curses screen for testing renderer."""
+def mock_screen(mock_curses):
+    """Mock curses screen for testing."""
     screen = MagicMock()
     screen.getmaxyx.return_value = (24, 80)
+    mock_window = MagicMock()
+    mock_window.getmaxyx.return_value = (24, 80)
+    mock_window.attron = MagicMock()
+    mock_window.attroff = MagicMock()
+    mock_window.addstr = MagicMock()
+    mock_window.refresh = MagicMock()
+    mock_curses.newwin.return_value = mock_window
+    mock_curses.initscr.return_value = screen
     return screen
+
+@pytest.fixture
+def temp_dir():
+    """Create temporary directory for test files."""
+    tmp = tempfile.mkdtemp()
+    yield Path(tmp)
+    shutil.rmtree(tmp)
 
 @pytest.fixture
 def game():
