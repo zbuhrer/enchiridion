@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 import yaml
 import openai
+from datetime import datetime
 
 from config import Config
 
@@ -85,6 +86,44 @@ class Toolbox:
     def _mock_llm_response(self, prompt: str) -> str:
         """Return mock responses for testing."""
         return f"Mock response for prompt: {prompt[:50]}..."
+
+    def get_story_prompt(self, current_text: str, choice: str) -> str:
+        """Generate a story continuation prompt."""
+        return f"Continue the story based on:\n{current_text}\nChosen action: {choice}"
+
+    def get_timestamp(self) -> str:
+        """Get current timestamp in ISO format."""
+        return datetime.now().isoformat()
+
+    def get_choices_prompt(self, current_text: str, world_state: Dict) -> str:
+        """Generate a prompt for choice generation."""
+        return f"Generate choices based on:\n{current_text}\nWorld state: {world_state}"
+
+    def parse_choices(self, response: str) -> List[str]:
+        """Parse choices from LLM response."""
+        choices = [c.strip() for c in response.split('\n') if c.strip()]
+        return choices[:Config.MAX_CHOICES]
+
+    def read_markdown(self, file_path: str) -> str:
+        """Read content from markdown file."""
+        with open(file_path) as f:
+            return f.read()
+
+    def get_links_prompt(self, content: str) -> str:
+        """Generate prompt for link analysis."""
+        return f"Analyze narrative links in:\n{content}"
+
+    def parse_links(self, response: str) -> List[str]:
+        """Parse narrative links from LLM response."""
+        return [link.strip() for link in response.split('\n') if link.strip()]
+
+    def get_lore_prompt(self, topic: str, context: Dict) -> str:
+        """Generate prompt for lore generation."""
+        return f"Generate lore about {topic} in context:\n{context}"
+
+    def format_lore(self, response: str) -> str:
+        """Format lore response."""
+        return response.strip()
 
 if __name__ == "__main__":
     # Simple test of toolbox functionality
