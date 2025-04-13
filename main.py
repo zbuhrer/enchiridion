@@ -3,9 +3,11 @@ import curses
 import sys
 import logging
 from typing import Optional
+import requests
 
 from game import Game
 from renderer import Renderer
+from toolbox import Toolbox
 
 
 # Configure logging
@@ -15,6 +17,14 @@ logging.basicConfig(
     filename='enchiridion.log'
 )
 logger = logging.getLogger(__name__)
+
+def check_ollama() -> bool:
+    """Check if Ollama is running."""
+    try:
+        response = requests.get("http://localhost:11434/api/version")
+        return response.status_code == 200
+    except:
+        return False
 
 def setup_curses() -> tuple[curses.window, Renderer]:
     """Initialize curses and return the main screen and renderer."""
@@ -44,8 +54,22 @@ def main() -> None:
     """Main entry point for the Enchiridion game."""
     screen = None
     try:
+        # Check if Ollama is running
+        if not check_ollama():
+            print("Error: Ollama is not running. Please start Ollama first.")
+            sys.exit(1)
+
         # Initialize curses and renderer
         screen, renderer = setup_curses()
+
+        # Check model availability
+        toolbox = Toolbox()
+        required_model = "mistral"
+        if required_model not in toolbox.list_available_models():
+            renderer.show_error(f"Required model '{required_model}' not found. Pulling...")
+            if not toolbox.pull_model(required_model):
+                renderer.show_error(f"Error: Could not pull model '{required_model}'")
+                sys.exit(1)
 
         # Load or create new game
         game = Game()

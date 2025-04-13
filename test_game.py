@@ -25,14 +25,25 @@ def mock_curses():
     curses_mock.COLOR_YELLOW = 3
     curses_mock.COLOR_CYAN = 6
     curses_mock.A_NORMAL = 0
+    curses_mock.A_BOLD = 1
+    curses_mock.A_REVERSE = 2
 
     window_mock = MagicMock()
     window_mock.getmaxyx.return_value = (24, 80)
-    window_mock.getch.return_value = ord('q')
+    window_mock.addstr = MagicMock()
+    window_mock.refresh = MagicMock()
+    window_mock.clear = MagicMock()
+    window_mock.keypad = MagicMock()
+    window_mock.getch = MagicMock(return_value=ord('\n'))
 
     curses_mock.initscr.return_value = window_mock
     curses_mock.newwin.return_value = window_mock
     curses_mock.color_pair.return_value = 0
+    curses_mock.init_pair = MagicMock()
+    curses_mock.start_color = MagicMock()
+    curses_mock.use_default_colors = MagicMock()
+    curses_mock.noecho = MagicMock()
+    curses_mock.cbreak = MagicMock()
 
     with patch.dict('sys.modules', {'curses': curses_mock}):
         yield curses_mock
@@ -40,17 +51,7 @@ def mock_curses():
 @pytest.fixture
 def mock_screen(mock_curses):
     """Mock curses screen for testing."""
-    screen = MagicMock()
-    screen.getmaxyx.return_value = (24, 80)
-    mock_window = MagicMock()
-    mock_window.getmaxyx.return_value = (24, 80)
-    mock_window.attron = MagicMock()
-    mock_window.attroff = MagicMock()
-    mock_window.addstr = MagicMock()
-    mock_window.refresh = MagicMock()
-    mock_curses.newwin.return_value = mock_window
-    mock_curses.initscr.return_value = screen
-    return screen
+    return mock_curses.initscr()
 
 @pytest.fixture
 def temp_dir():
@@ -123,13 +124,16 @@ def test_toolbox_uuid_generation(toolbox):
     assert uuid1 != uuid2
     assert len(uuid1) == 36  # Standard UUID length
 
-@patch('openai.ChatCompletion.create')
-def test_toolbox_llm_invocation(mock_openai, toolbox):
+def test_toolbox_llm_invocation(toolbox):
     """Test LLM invocation."""
-    mock_openai.return_value.choices[0].message.content = "Test response"
-    response = toolbox.invoke_llm("Test prompt")
-    assert response == "Test response"
-    mock_openai.assert_called_once()
+    expected_response = "Mock response for test"
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {"response": expected_response}
+
+    with patch('requests.post', return_value=mock_response):
+        response = toolbox.invoke_llm("Test prompt")
+        assert response == expected_response
 
 # Agent Tests
 def test_story_agent(toolbox):
@@ -166,8 +170,13 @@ def test_renderer_markdown(mock_screen):
     """Test markdown rendering."""
     renderer = Renderer(mock_screen)
     test_text = "# Test Header\nTest content"
+
+    # Mock the text window
+    mock_text_win = MagicMock()
+    renderer.text_win = mock_text_win
+
     renderer.render_markdown(test_text)
-    mock_screen.refresh.assert_called()
+    assert mock_text_win.addstr.call_count > 0, "Text was not rendered"
 
 # Task Queue Tests
 def test_task_queue():
@@ -199,20 +208,59 @@ def test_task_queue():
 def test_game_initialization(game, temp_dir):
     """Test game initialization."""
     with patch.object(Config, 'SAVES_DIR', temp_dir):
-        game.new()
-        assert game.uuid != ""
-        assert game.save_path.exists()
+        # Setup mock story response
+        mock_story = {'text': 'Initial chapter', 'metadata': {}}
+
+        # Create necessary directories
+        save_dir = temp_dir / "test-uuid"
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create chapter file first
+        chapter_path = save_dir / "chapter_1.md"
+        chapter_path.write_text('Initial chapter')
+
+        # Patch story agent and toolbox
+        with patch.object(game.story_agent, 'call', return_value=mock_story), \
+             patch.object(game.toolbox, 'append_chapter', return_value=str(chapter_path)), \
+             patch.object(game, 'uuid', "test-uuid"):
+
+            # Initialize new game
+            game.new()
+            assert game.uuid != ""
+            assert game.save_path.exists()
+            assert game.current_chapter == str(chapter_path)
+            assert Path(game.current_chapter).exists()
 
 def test_game_save_load(game, temp_dir):
     """Test game save/load functionality."""
     with patch.object(Config, 'SAVES_DIR', temp_dir):
-        game.new()
-        original_uuid = game.uuid
-        game.save()
+        # Setup mock story response
+        mock_story = {'text': 'Initial chapter', 'metadata': {}}
 
-        new_game = Game()
-        new_game.load(original_uuid)
-        assert new_game.uuid == original_uuid
+        # Create necessary directories
+        save_dir = temp_dir / "test-uuid"
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create chapter file first
+        chapter_path = save_dir / "chapter_1.md"
+        chapter_path.write_text('Initial chapter')
+
+        # Patch story agent and toolbox
+        with patch.object(game.story_agent, 'call', return_value=mock_story), \
+             patch.object(game.toolbox, 'append_chapter', return_value=str(chapter_path)), \
+             patch.object(game, 'uuid', "test-uuid"):
+
+            # Initialize new game
+            game.new()
+            game.save()
+
+            # Test loading
+            new_game = Game()
+            new_game.load("test-uuid")
+
+            assert new_game.uuid == "test-uuid"
+            assert new_game.current_chapter == str(chapter_path)
+            assert Path(new_game.current_chapter).exists()
 
 def test_game_advance(game):
     """Test game state advancement."""

@@ -23,12 +23,10 @@ class Config:
 
     # Model settings
     MODEL_CONFIG: Dict[str, Any] = {
-        "model": "gpt-4",  # Default model
+        "model": "qwen2.5",  # Default model
         "temperature": 0.7,
-        "max_tokens": 2000,
         "top_p": 0.9,
-        "frequency_penalty": 0.5,
-        "presence_penalty": 0.5,
+        "max_tokens": 2048  # Maximum tokens per request
     }
 
     # Game settings

@@ -37,14 +37,28 @@ class Game:
         # Initialize new game state
         self.state.initialize_world_state(self.save_path)
 
-        # Generate initial chapter
-        initial_story = self.story_agent.call(
-            current_text="",
-            choice="begin"
-        )
-        self.current_chapter = self.toolbox.append_chapter(initial_story['text'])
+        try:
+            # Generate initial chapter
+            initial_story = self.story_agent.call(
+                current_text="",
+                choice="begin"
+            )
 
-        logger.info(f"New game created with UUID: {self.uuid}")
+            # Create first chapter file and set current chapter
+            self.current_chapter = self.toolbox.append_chapter(initial_story['text'])
+
+            # Ensure the chapter file exists
+            if not Path(self.current_chapter).exists():
+                raise ValueError("Failed to create initial chapter file")
+
+            # Save initial state
+            self.save()
+
+            logger.info(f"New game created with UUID: {self.uuid}")
+
+        except Exception as e:
+            logger.error(f"Error creating new game: {str(e)}")
+            raise
 
     def load(self, save_uuid: Optional[str] = None) -> None:
         """Load an existing game state."""
@@ -68,11 +82,14 @@ class Game:
         self.state.load_world_state(self.save_path)
 
         # Find current chapter
-        chapters = sorted(self.save_path.glob("chapter_*.md"))
-        if chapters:
-            self.current_chapter = str(chapters[-1])
-        else:
-            raise ValueError("No chapters found in save directory")
+        chapters = sorted(self.save_path.glob(f"{Config.CHAPTER_PREFIX}*.md"))
+        if not chapters:
+            raise ValueError(f"No chapters found in save directory: {self.save_path}")
+
+        self.current_chapter = str(chapters[-1])
+
+        if not Path(self.current_chapter).exists():
+            raise FileNotFoundError(f"Chapter file not found: {self.current_chapter}")
 
         logger.info(f"Loaded game with UUID: {self.uuid}")
 
@@ -104,6 +121,10 @@ class Game:
 
             # Update story links
             self.link_agent.call([self.current_chapter])
+
+            # Auto-save if enabled
+            if Config.AUTO_SAVE:
+                self.save()
 
             logger.info(f"Advanced game state with choice: {choice}")
 

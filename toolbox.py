@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 from typing import Dict, List
 import yaml
-from openai import OpenAI
+import requests
 from datetime import datetime
 from unittest.mock import MagicMock
 
@@ -17,13 +17,10 @@ class Toolbox:
 
     def __init__(self):
         """Initialize the toolbox with required settings."""
-        if not Config.is_test_environment():
-            self.client = OpenAI(api_key=Config.MODEL_CONFIG.get("api_key"))
-        else:
+        self.base_url = "http://localhost:11434/api"
+        self.model = Config.MODEL_CONFIG.get("model", "mistral")
+        if Config.is_test_environment():
             self.client = MagicMock()
-            self.client.chat.completions.create.return_value = MagicMock(
-                choices=[MagicMock(message=MagicMock(content="Test response"))]
-            )
         self.model_config = Config.get_model_config()
 
     def write_markdown(self, file_path: Path, content: str) -> None:
@@ -70,8 +67,37 @@ class Toolbox:
         """Generate a unique identifier."""
         return str(uuid.uuid4())
 
+    def check_ollama_status(self) -> bool:
+        """Check if Ollama is running and accessible."""
+        try:
+            response = requests.get(f"{self.base_url}/version")
+            return response.status_code == 200
+        except:
+            return False
+
+    def list_available_models(self) -> List[str]:
+        """Get list of available Ollama models."""
+        try:
+            response = requests.get(f"{self.base_url}/tags")
+            if response.status_code == 200:
+                return [model["name"] for model in response.json()["models"]]
+            return []
+        except:
+            return []
+
+    def pull_model(self, model_name: str) -> bool:
+        """Pull a new model from Ollama."""
+        try:
+            response = requests.post(
+                f"{self.base_url}/pull",
+                json={"name": model_name}
+            )
+            return response.status_code == 200
+        except:
+            return False
+
     def invoke_llm(self, prompt: str, **kwargs) -> str:
-        """Send a prompt to the LLM and return the response."""
+        """Send a prompt to Ollama and return the response."""
         try:
             # Merge default config with any overrides
             config = self.model_config.copy()
@@ -80,14 +106,26 @@ class Toolbox:
             if Config.is_test_environment():
                 return self._mock_llm_response(prompt)
 
-            response = self.client.chat.completions.create(
-                messages=[{"role": "user", "content": prompt}],
-                **config
+            response = requests.post(
+                f"{self.base_url}/generate",
+                json={
+                    "model": self.model,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {
+                        "temperature": config.get("temperature", 0.7),
+                        "top_p": config.get("top_p", 0.9),
+                    }
+                }
             )
 
-            return response.choices[0].message.content
+            if response.status_code == 200:
+                return response.json()["response"]
+            else:
+                raise Exception(f"Ollama API error: {response.text}")
+
         except Exception as e:
-            logger.error(f"Error invoking LLM: {str(e)}")
+            logger.error(f"Error invoking Ollama: {str(e)}")
             raise
 
     def _mock_llm_response(self, prompt: str) -> str:
